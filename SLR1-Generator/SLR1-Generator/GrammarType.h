@@ -3,6 +3,8 @@
 #include <vector>
 #include <set>
 
+using TableType = std::map<std::set<std::string>, std::map<std::string, std::set<std::string>>>;
+
 struct GrammarSymbol {
 	std::string value;
 	bool isTerminal;
@@ -12,7 +14,11 @@ struct GrammarSymbol {
 	}
 
 	bool operator==( const GrammarSymbol& symbol ) const {
-		return value == symbol.value && isTerminal == symbol.isTerminal;
+		return value == symbol.value;
+	}
+
+	bool operator!=( const GrammarSymbol& symbol ) const {
+		return value != symbol.value;
 	}
 };
 
@@ -24,15 +30,11 @@ struct RelationFirst {
 		return value < relationFirst.value
 			|| (value == relationFirst.value && ruleNum < relationFirst.ruleNum);
 	}
-	bool operator==( const RelationFirst& relationFirst ) const {
-		return value == relationFirst.value && ruleNum == relationFirst.ruleNum;
-	}
 };
 
 struct Rule {
 	GrammarSymbol left;
 	std::vector<GrammarSymbol> right;
-	std::set<RelationFirst> guideSet;
 };
 
 struct Position {
@@ -42,11 +44,4 @@ struct Position {
 	bool operator<( const Position& position ) const {
 		return rule < position.rule || (rule == position.rule && pos < position.pos);
 	}
-};
-
-struct Transition {
-	GrammarSymbol symbol;
-	int count;
-	std::set<Position> positions;
-	bool isTransition;
 };

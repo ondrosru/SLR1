@@ -1,0 +1,4 @@
+<Z> -> <S> [endOfParsing]
+<S> -> <S> a
+<S> -> <S> b
+<S> -> c

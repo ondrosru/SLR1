@@ -31,5 +31,8 @@
     <Text Include="in.txt">
       <Filter>Файлы ресурсов</Filter>
     </Text>
+    <Text Include="in1.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
   </ItemGroup>
 </Project>

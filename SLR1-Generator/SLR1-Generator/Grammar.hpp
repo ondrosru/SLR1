@@ -6,16 +6,21 @@
 #include <queue>
 #include "GrammarType.h"
 
-const std::string EMPTY_SYMBOL = "@";
+const GrammarSymbol EMPTY_SYMBOL = { "@", false };
+const GrammarSymbol END_SYMBOL = { "[endOfParsing]", true };
+const char DELIM = '~';
+const char COMMA = ',';
+const std::string OK_STRING = "|ok|";
+const std::string CONVOLUTION_STR = "|R|";
+const std::string NO_VALUE = "|-|";
 
 GrammarSymbol ToGrammarSymbol( std::string value ) {
-	GrammarSymbol symbol;
-	symbol.value = value;
+	GrammarSymbol symbol = { value, true };
 	if ( value.size() > 2 && value[0] == '<' && value[value.size() - 1] == '>' ) {
 		symbol.isTerminal = false;
 	}
-	else {
-		symbol.isTerminal = true;
+	if (value == EMPTY_SYMBOL.value) {
+		symbol.isTerminal = false;
 	}
 	return symbol;
 }
@@ -40,118 +45,261 @@ std::vector<Rule> ReadRules( std::string fileName ) {
 	return rules;
 }
 
-std::set<RelationFirst> GetFirstPlus( GrammarSymbol symbol, std::vector<Rule> rules ) {
-	std::set<RelationFirst> first;
-	for ( size_t i = 0; i < rules.size(); i++ ) {
-		if ( symbol.value == rules[i].left.value ) {
-			RelationFirst rf = { rules[i].right[0], i };
-			first.insert( rf );
-		}
-	}
-	return first;
-}
-
-std::set<RelationFirst> GetFirstStar( GrammarSymbol symbol, std::vector<Rule> rules ) {
-	std::set<RelationFirst> first;
+std::set<RelationFirst> First( GrammarSymbol symbol, std::vector<Rule> rules ) {
+	std::set<RelationFirst> relationsFirst;
 	for ( size_t i = 0; i < rules.size(); i++ ) {
 		if ( rules[i].left == symbol ) {
-			Rule rule = rules[i];
-			RelationFirst rf = { rule.right[0], i };
-			first.insert( rf );
-			if ( !rf.value.isTerminal ) {
-				std::set<GrammarSymbol> processedNonterminals;
-				std::queue<GrammarSymbol> nontemrminals;
-				nontemrminals.push( rule.right[0] );
-				while ( !nontemrminals.empty() ) {
-					GrammarSymbol nonterminal = nontemrminals.front();
-					nontemrminals.pop();
-					processedNonterminals.insert( nonterminal );
-					std::set<RelationFirst> rfs = GetFirstPlus( nonterminal, rules );
-					for ( RelationFirst rf : rfs ) {
-						if ( !rf.value.isTerminal ) {
-							if ( processedNonterminals.find( rf.value ) == processedNonterminals.end() ) {
-								nontemrminals.push( rf.value );
+			relationsFirst.insert( { rules[i].right[0], i } );
+			if ( !rules[i].right[0].isTerminal ) {
+				if ( symbol != rules[i].right[0] ) {
+					std::set<RelationFirst> rfs = First( rules[i].right[0], rules );
+					relationsFirst.insert( rfs.begin(), rfs.end() );
+				}
+			}
+		}
+	}
+	return relationsFirst;
+}
+
+std::set<GrammarSymbol> Follow( GrammarSymbol symbol, std::vector<Rule> rules ) {
+	std::set<GrammarSymbol> follows;
+	for ( Rule rule : rules ) {
+		for ( size_t i = 0; i < rule.right.size(); i++ ) {
+			if ( rule.right[i] == symbol ) {
+				if ( rule.right.size() > i + 1 ) {
+					follows.insert( rule.right[i + 1] );
+				}
+				else {
+					if ( symbol != rule.left ) {
+						std::set<GrammarSymbol> newFollows = Follow( rule.left, rules );
+						follows.insert( newFollows.begin(), newFollows.end() );
+					}
+					
+				}
+			}
+		}
+	}
+	return follows;
+}
+
+void CreateTableRecursion( TableType& table, std::vector<Rule> rules, std::pair<GrammarSymbol, std::set<Position>> state ) {
+	std::set<std::string> currRow;
+	for ( Position pos : state.second ) {
+		std::string str = state.first.value;
+		str += std::to_string( pos.rule );
+		str += DELIM;
+		str += std::to_string( pos.pos );
+		currRow.insert( str );
+	}
+
+	if ( table.find( currRow ) == table.end() ) {
+		std::map<GrammarSymbol, std::set<Position>> states;
+		for ( Position pos : state.second ) {
+			if ( rules[pos.rule].right.size() > pos.pos + 1 ) {
+				GrammarSymbol currSymbol = rules[pos.rule].right[pos.pos + 1];
+				if ( currSymbol != END_SYMBOL ) {
+					states[currSymbol].insert( { pos.rule, pos.pos + 1 } );
+					std::string str = currSymbol.value;
+					str += std::to_string( pos.rule );
+					str += DELIM;
+					str += std::to_string( pos.pos + 1 );
+					table[currRow][currSymbol.value].insert( str );
+				}
+				else {
+					std::string str = CONVOLUTION_STR;
+					str += std::to_string( pos.rule );
+					table[currRow][currSymbol.value].insert( str );
+				}
+				
+				if ( !currSymbol.isTerminal ) {
+					std::set<RelationFirst> relationsFirst = First( currSymbol, rules );
+					for ( RelationFirst rf : relationsFirst ) {
+						if ( rf.value == EMPTY_SYMBOL ) {
+							std::set<GrammarSymbol> follows = Follow( rules[rf.ruleNum].left, rules );
+							for ( GrammarSymbol follow : follows ) {
+								std::string str = CONVOLUTION_STR;
+								str += std::to_string( pos.rule );
+								table[currRow][follow.value].insert( str );
 							}
 						}
-						first.insert( rf );
+						else {
+							states[rf.value].insert( { rf.ruleNum, 0 } );
+							std::string str = rf.value.value;
+							str += std::to_string( rf.ruleNum );
+							str += DELIM;
+							str += '0';
+							table[currRow][rf.value.value].insert( str );
+						}
+					}
+				}
+			}
+			else {
+				std::set<GrammarSymbol> follows = Follow( rules[pos.rule].left, rules );
+				for ( GrammarSymbol follow : follows ) {
+					std::string str = CONVOLUTION_STR;
+					str += std::to_string( pos.rule );
+					table[currRow][follow.value].insert( str );
+				}
+			}
+		}
+
+		for ( std::pair<GrammarSymbol, std::set<Position>> state : states ) {
+			CreateTableRecursion( table, rules, state );
+		}
+	}
+}
+
+TableType CreateTable( std::vector<Rule> rules ) {
+	TableType table;
+	std::set<std::string> currRow;
+	currRow.insert( rules[0].left.value );
+	table[currRow][rules[0].left.value].insert( OK_STRING );
+	std::set<RelationFirst> relationsFirst = First( rules[0].left, rules );
+	std::map<GrammarSymbol, std::set<Position>> states;
+	for ( RelationFirst rf : relationsFirst ) {
+		if ( rf.value == EMPTY_SYMBOL ) {
+			std::set<GrammarSymbol> follows = Follow( rules[rf.ruleNum].left, rules );
+			for ( GrammarSymbol follow : follows ) {
+				std::string str = CONVOLUTION_STR;
+				str += std::to_string( rf.ruleNum );
+				table[currRow][follow.value].insert( str );
+			}
+		}
+		else {
+			states[rf.value].insert( { rf.ruleNum, 0 } );
+			std::string str = rf.value.value;
+			str += std::to_string( rf.ruleNum );
+			str += DELIM;
+			str += '0';
+			table[currRow][rf.value.value].insert( str );
+		}
+	}
+	for ( std::pair<GrammarSymbol, std::set<Position>> state : states ) {
+		CreateTableRecursion( table, rules, state );
+	}
+	return table;
+}
+
+bool isNonterminal( std::string str ) {
+	return str.size() > 2 && str[0] == '<' && str[str.size() - 1] == '>';
+}
+
+void PrintTable( std::vector<Rule> rules, TableType table, std::ostream& stream ) {
+	GrammarSymbol startSymbol = rules[0].left;
+
+	std::vector<std::string> terminals;
+	std::vector<std::string> nonTerminals;
+	std::vector<std::string> cols;
+	for ( auto row : table ) {
+		for ( auto col : row.second ) {
+			if ( col.first != END_SYMBOL.value ) {
+				if ( col.first == rules[0].left.value ) {
+					if ( std::find( cols.begin(), cols.end(), col.first ) == cols.end() ) {
+						cols.push_back( col.first );
+					}
+				}
+				else if ( std::find( terminals.begin(), terminals.end(), col.first ) == terminals.end() && std::find( nonTerminals.begin(), nonTerminals.end(), col.first ) == nonTerminals.end() ) {
+					if ( isNonterminal( col.first ) ) {
+						nonTerminals.push_back( col.first );
+					}
+					else {
+						terminals.push_back( col.first );
 					}
 				}
 			}
 		}
 	}
-	return first;
-}
 
-void CreateGuideSets( std::vector<Rule>& rules ) {
-	for ( std::vector<Rule>::iterator it = rules.begin(); it != rules.end(); it++ ) {
-		std::set<RelationFirst> relationsFirst = GetFirstStar( it->left, rules );
-		for ( RelationFirst rf : relationsFirst ) {
-			it->guideSet.insert( rf );
-		}
+	cols.insert( cols.end(), nonTerminals.begin(), nonTerminals.end() );
+	cols.insert( cols.end(), terminals.begin(), terminals.end() );
+	cols.push_back( END_SYMBOL.value );
+
+	for ( auto col : cols ) {
+		stream << col << " ";
 	}
-}
+	stream << std::endl;
 
-void CreateTable( std::vector<Rule> rules, std::map<GrammarSymbol, Transition> transitions, std::map<std::set<Position>, std::map<GrammarSymbol, Transition>>& table ) {
-	for ( std::pair<GrammarSymbol, Transition> transition : transitions ) {
-		if ( transition.second.isTransition && table.find( transition.second.positions ) == table.end() ) {
-			std::map<GrammarSymbol, Transition> newTransitions;
-			for ( Position position : transition.second.positions ) {
-				Rule rule = rules[position.rule];
-				if ( rule.right.size() - 1 > position.pos ) {
-					Position newPosition = { position.rule, position.pos + 1 };
-					
-					if ( newTransitions.find( rule.right[newPosition.pos]) != newTransitions.end() ) {
-						newTransitions[rule.right[newPosition.pos]].positions.insert( newPosition );
-					}
-					else {
-						Transition newTransition;
-						newTransition.isTransition = true;
-						newTransition.positions.insert( newPosition );
-						newTransitions[rule.right[newPosition.pos]] = newTransition;
-					}
+	std::set<std::string> startRow;
+	startRow.insert( startSymbol.value );
+	std::queue<std::set<std::string>> queue;
+	queue.push( startRow );
 
-					if ( !rule.right[newPosition.pos].isTerminal ) {
-						for ( size_t i = 1; i < rules.size(); i++ ) {
-							if ( rules[i].left == rule.right[newPosition.pos] ) {
-								for ( RelationFirst rf : rules[i].guideSet) {
-									if ( rf.value.value == EMPTY_SYMBOL ) {
-										Transition newTransition;
-										newTransition.isTransition = false;
-										newTransition.symbol = rules[rf.ruleNum].left;
-										newTransition.count = 0;
-										newTransitions[{EMPTY_SYMBOL, true}] = newTransition;
-									}
-									else {
-										Position newPosition2;
-										newPosition2.rule = rf.ruleNum;
-										newPosition2.pos = 0;
+	std::vector<std::set<std::string>> positions;
+	positions.push_back( startRow );
 
-										if ( newTransitions.find( rf.value ) != newTransitions.end() ) {
-											newTransitions[rf.value].positions.insert( newPosition2 );
-										}
-										else {
-											Transition newTransition;
-											newTransition.isTransition = true;
-											newTransition.positions.insert( newPosition2 );
-											newTransitions[rf.value] = newTransition;
-										}
+	while ( !queue.empty() ) {
+		std::set<std::string> currRow = queue.front();
+		queue.pop();
+		size_t pos = 0;
+		for ( size_t i = 0; i < positions.size(); i++ ) {
+			if ( positions[i] == currRow ) {
+				pos = i + 1;
+			}
+		}
+		std::cout << pos << " ";
+
+		for ( auto col : cols) {
+			if ( table[currRow].find( col ) != table[currRow].end() ) {
+				bool printDelim = false;
+				if ( table[currRow][col].size() == 1 ) {
+					for ( std::string value : table[currRow][col] ) {
+						if ( value == OK_STRING ) {
+							std::cout << OK_STRING;
+						}
+						else if ( value.size() > CONVOLUTION_STR.size() && value.substr( 0, CONVOLUTION_STR.size() ) == CONVOLUTION_STR ) {
+							std::string numStr = value.substr( CONVOLUTION_STR.size() );
+							int num = atoi( numStr.c_str() );
+							std::cout << CONVOLUTION_STR << rules[num].left.value;
+						}
+						else {
+							if ( printDelim ) {
+								stream << DELIM;
+							}
+							size_t num = 0;
+							if ( std::find( positions.begin(), positions.end(), table[currRow][col] ) == positions.end() ) {
+								positions.push_back( table[currRow][col] );
+								num = positions.size();
+								queue.push( table[currRow][col] );
+							}
+							else {
+								for ( size_t i = 0; i < positions.size(); i++ ) {
+									if ( positions[i] == table[currRow][col] ) {
+										num = i + 1;
 									}
 								}
 							}
+							stream << num;
+							printDelim = true;
 						}
 					}
 				}
 				else {
-					Transition newTransition;
-					newTransition.isTransition = false;
-					newTransition.symbol = rule.left;
-					newTransition.count = rule.right.size();
-					newTransitions[{EMPTY_SYMBOL, true}] = newTransition;
+					if ( printDelim ) {
+						stream << DELIM;
+					}
+					size_t num = 0;
+					if ( std::find( positions.begin(), positions.end(), table[currRow][col] ) == positions.end() ) {
+						positions.push_back( table[currRow][col] );
+						num = positions.size();
+						queue.push( table[currRow][col] );
+					}
+					else {
+						for ( size_t i = 0; i < positions.size(); i++ ) {
+							if ( positions[i] == table[currRow][col] ) {
+								num = i + 1;
+							}
+						}
+					}
+					stream << num;
+					printDelim = true;
 				}
-				table[transition.second.positions] = newTransitions;
 			}
-
-			CreateTable( rules, newTransitions, table );
+			else {
+				stream << NO_VALUE;
+			}
+			stream << " ";
 		}
+
+		stream << std::endl;
 	}
 }
