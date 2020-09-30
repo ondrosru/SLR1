@@ -236,7 +236,7 @@ void PrintTable( std::vector<Rule> rules, TableType table, std::ostream& stream 
 				pos = i + 1;
 			}
 		}
-		std::cout << pos << " ";
+		stream << pos << " ";
 
 		for ( auto col : cols) {
 			if ( table[currRow].find( col ) != table[currRow].end() ) {
@@ -244,12 +244,12 @@ void PrintTable( std::vector<Rule> rules, TableType table, std::ostream& stream 
 				if ( table[currRow][col].size() == 1 ) {
 					for ( std::string value : table[currRow][col] ) {
 						if ( value == OK_STRING ) {
-							std::cout << OK_STRING;
+							stream << OK_STRING;
 						}
 						else if ( value.size() > CONVOLUTION_STR.size() && value.substr( 0, CONVOLUTION_STR.size() ) == CONVOLUTION_STR ) {
 							std::string numStr = value.substr( CONVOLUTION_STR.size() );
 							int num = atoi( numStr.c_str() );
-							std::cout << CONVOLUTION_STR << rules[num].left.value;
+							stream << CONVOLUTION_STR << rules[num].left.value;
 						}
 						else {
 							if ( printDelim ) {
