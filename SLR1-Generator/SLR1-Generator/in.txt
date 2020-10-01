@@ -1,4 +1,4 @@
-<Z> -> <E> [endOfParsing]
+<Z> -> <E> [end]
 <E> -> <E> + <T>
 <E> -> <T>
 <T> -> <T> * <F>

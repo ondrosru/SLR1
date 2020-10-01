@@ -3,7 +3,11 @@
 #include <vector>
 #include <set>
 
-using TableType = std::map<std::set<std::string>, std::map<std::string, std::set<std::string>>>;
+struct TableValue {
+	std::set<std::string> values;
+	size_t count;
+};
+using TableType = std::map<std::set<std::string>, std::map<std::string, TableValue>>;
 
 struct GrammarSymbol {
 	std::string value;

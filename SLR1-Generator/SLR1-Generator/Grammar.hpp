@@ -7,12 +7,13 @@
 #include "GrammarType.h"
 
 const GrammarSymbol EMPTY_SYMBOL = { "@", false };
-const GrammarSymbol END_SYMBOL = { "[endOfParsing]", true };
+const GrammarSymbol END_SYMBOL = { "[end]", true };
 const char DELIM = '~';
 const char COMMA = ',';
 const std::string OK_STRING = "|ok|";
 const std::string CONVOLUTION_STR = "|R|";
 const std::string NO_VALUE = "|-|";
+const std::string UNDERLINE_STR = "_";
 
 GrammarSymbol ToGrammarSymbol( std::string value ) {
 	GrammarSymbol symbol = { value, true };
@@ -103,12 +104,13 @@ void CreateTableRecursion( TableType& table, std::vector<Rule> rules, std::pair<
 					str += std::to_string( pos.rule );
 					str += DELIM;
 					str += std::to_string( pos.pos + 1 );
-					table[currRow][currSymbol.value].insert( str );
+					table[currRow][currSymbol.value].values.insert( str );
 				}
 				else {
 					std::string str = CONVOLUTION_STR;
 					str += std::to_string( pos.rule );
-					table[currRow][currSymbol.value].insert( str );
+					table[currRow][currSymbol.value].values.insert( str );
+					table[currRow][currSymbol.value].count = rules[pos.rule].right.size();
 				}
 				
 				if ( !currSymbol.isTerminal ) {
@@ -119,7 +121,8 @@ void CreateTableRecursion( TableType& table, std::vector<Rule> rules, std::pair<
 							for ( GrammarSymbol follow : follows ) {
 								std::string str = CONVOLUTION_STR;
 								str += std::to_string( pos.rule );
-								table[currRow][follow.value].insert( str );
+								table[currRow][follow.value].values.insert( str );
+								table[currRow][follow.value].count = rules[pos.rule].right.size();
 							}
 						}
 						else {
@@ -128,7 +131,8 @@ void CreateTableRecursion( TableType& table, std::vector<Rule> rules, std::pair<
 							str += std::to_string( rf.ruleNum );
 							str += DELIM;
 							str += '0';
-							table[currRow][rf.value.value].insert( str );
+							table[currRow][rf.value.value].values.insert( str );
+							table[currRow][rf.value.value].count = -1;
 						}
 					}
 				}
@@ -138,7 +142,8 @@ void CreateTableRecursion( TableType& table, std::vector<Rule> rules, std::pair<
 				for ( GrammarSymbol follow : follows ) {
 					std::string str = CONVOLUTION_STR;
 					str += std::to_string( pos.rule );
-					table[currRow][follow.value].insert( str );
+					table[currRow][follow.value].values.insert( str );
+					table[currRow][follow.value].count = rules[pos.rule].right.size();
 				}
 			}
 		}
@@ -153,7 +158,7 @@ TableType CreateTable( std::vector<Rule> rules ) {
 	TableType table;
 	std::set<std::string> currRow;
 	currRow.insert( rules[0].left.value );
-	table[currRow][rules[0].left.value].insert( OK_STRING );
+	table[currRow][rules[0].left.value].values.insert( OK_STRING );
 	std::set<RelationFirst> relationsFirst = First( rules[0].left, rules );
 	std::map<GrammarSymbol, std::set<Position>> states;
 	for ( RelationFirst rf : relationsFirst ) {
@@ -162,7 +167,8 @@ TableType CreateTable( std::vector<Rule> rules ) {
 			for ( GrammarSymbol follow : follows ) {
 				std::string str = CONVOLUTION_STR;
 				str += std::to_string( rf.ruleNum );
-				table[currRow][follow.value].insert( str );
+				table[currRow][follow.value].values.insert( str );
+				table[currRow][follow.value].count = rules[0].right.size();
 			}
 		}
 		else {
@@ -171,7 +177,8 @@ TableType CreateTable( std::vector<Rule> rules ) {
 			str += std::to_string( rf.ruleNum );
 			str += DELIM;
 			str += '0';
-			table[currRow][rf.value.value].insert( str );
+			table[currRow][rf.value.value].values.insert( str );
+			table[currRow][rf.value.value].count = -1;
 		}
 	}
 	for ( std::pair<GrammarSymbol, std::set<Position>> state : states ) {
@@ -214,8 +221,11 @@ void PrintTable( std::vector<Rule> rules, TableType table, std::ostream& stream 
 	cols.insert( cols.end(), terminals.begin(), terminals.end() );
 	cols.push_back( END_SYMBOL.value );
 
-	for ( auto col : cols ) {
-		stream << col << " ";
+	for ( size_t i = 0; i < cols.size(); i++ ) {
+		stream << cols[i];
+		if ( i + 1 < cols.size() ) {
+			stream << " ";
+		}
 	}
 	stream << std::endl;
 
@@ -238,66 +248,61 @@ void PrintTable( std::vector<Rule> rules, TableType table, std::ostream& stream 
 		}
 		stream << pos << " ";
 
+		size_t n = 0;
 		for ( auto col : cols) {
 			if ( table[currRow].find( col ) != table[currRow].end() ) {
-				bool printDelim = false;
-				if ( table[currRow][col].size() == 1 ) {
-					for ( std::string value : table[currRow][col] ) {
+				if ( table[currRow][col].values.size() == 1 ) {
+					for ( std::string value : table[currRow][col].values ) {
 						if ( value == OK_STRING ) {
 							stream << OK_STRING;
 						}
 						else if ( value.size() > CONVOLUTION_STR.size() && value.substr( 0, CONVOLUTION_STR.size() ) == CONVOLUTION_STR ) {
 							std::string numStr = value.substr( CONVOLUTION_STR.size() );
 							int num = atoi( numStr.c_str() );
-							stream << CONVOLUTION_STR << rules[num].left.value;
+							stream << CONVOLUTION_STR << rules[num].left.value << DELIM << table[currRow][col].count;
 						}
 						else {
-							if ( printDelim ) {
-								stream << DELIM;
-							}
 							size_t num = 0;
-							if ( std::find( positions.begin(), positions.end(), table[currRow][col] ) == positions.end() ) {
-								positions.push_back( table[currRow][col] );
+							if ( std::find( positions.begin(), positions.end(), table[currRow][col].values ) == positions.end() ) {
+								positions.push_back( table[currRow][col].values );
 								num = positions.size();
-								queue.push( table[currRow][col] );
+								queue.push( table[currRow][col].values );
 							}
 							else {
 								for ( size_t i = 0; i < positions.size(); i++ ) {
-									if ( positions[i] == table[currRow][col] ) {
+									if ( positions[i] == table[currRow][col].values ) {
 										num = i + 1;
 									}
 								}
 							}
 							stream << num;
-							printDelim = true;
 						}
 					}
 				}
 				else {
-					if ( printDelim ) {
-						stream << DELIM;
-					}
 					size_t num = 0;
-					if ( std::find( positions.begin(), positions.end(), table[currRow][col] ) == positions.end() ) {
-						positions.push_back( table[currRow][col] );
+					if ( std::find( positions.begin(), positions.end(), table[currRow][col].values ) == positions.end() ) {
+						positions.push_back( table[currRow][col].values );
 						num = positions.size();
-						queue.push( table[currRow][col] );
+						queue.push( table[currRow][col].values );
 					}
 					else {
 						for ( size_t i = 0; i < positions.size(); i++ ) {
-							if ( positions[i] == table[currRow][col] ) {
+							if ( positions[i] == table[currRow][col].values ) {
 								num = i + 1;
 							}
 						}
 					}
 					stream << num;
-					printDelim = true;
 				}
 			}
 			else {
 				stream << NO_VALUE;
 			}
-			stream << " ";
+			n++;
+			if ( n < cols.size() ) {
+				stream << " ";
+			}
 		}
 
 		stream << std::endl;
