@@ -122,7 +122,7 @@ void CreateTableRecursion( TableType& table, std::vector<Rule> rules, std::pair<
 								std::string str = CONVOLUTION_STR;
 								str += std::to_string( pos.rule );
 								table[currRow][follow.value].values.insert( str );
-								table[currRow][follow.value].count = rules[pos.rule].right.size();
+								table[currRow][follow.value].count = 0;
 							}
 						}
 						else {
@@ -168,7 +168,7 @@ TableType CreateTable( std::vector<Rule> rules ) {
 				std::string str = CONVOLUTION_STR;
 				str += std::to_string( rf.ruleNum );
 				table[currRow][follow.value].values.insert( str );
-				table[currRow][follow.value].count = rules[0].right.size();
+				table[currRow][follow.value].count = 0;
 			}
 		}
 		else {

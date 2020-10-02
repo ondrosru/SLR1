@@ -156,8 +156,10 @@
   <ItemGroup>
     <Text Include="Source.txt" />
     <Text Include="Source1.txt" />
+    <Text Include="Source2.txt" />
     <Text Include="Table.txt" />
     <Text Include="Table1.txt" />
+    <Text Include="Table2.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

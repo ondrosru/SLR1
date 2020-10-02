@@ -64,5 +64,11 @@
     <Text Include="Table1.txt">
       <Filter>Файлы ресурсов</Filter>
     </Text>
+    <Text Include="Source2.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
+    <Text Include="Table2.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
   </ItemGroup>
 </Project>

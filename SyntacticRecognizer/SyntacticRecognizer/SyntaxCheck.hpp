@@ -43,11 +43,10 @@ public:
 					m_currentToken = m_lexer.GetToken();
 				}
 				else {
-					for ( int i = 1; i < state.count; i++ ) {
+					for ( int i = 0; i < state.count; i++ ) {
+						m_currRow = m_stack.top();
 						m_stack.pop();
 					}
-					m_currRow = m_stack.top();
-					m_stack.pop();
 					state = m_table[m_currRow][state.value];
 					if ( state.value == OK_STRING ) {
 						massage = "ok";
