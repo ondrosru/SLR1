@@ -15,17 +15,20 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GrammarType.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="Grammar.hpp">
-      <Filter>Исходные файлы</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GrammarReader.hpp">
+      <Filter>Исходные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneratorSLR.hpp">
+      <Filter>Исходные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="GrammarHeader.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="in.txt">
@@ -34,10 +37,10 @@
     <Text Include="in1.txt">
       <Filter>Файлы ресурсов</Filter>
     </Text>
-    <Text Include="out.txt">
+    <Text Include="in2.txt">
       <Filter>Файлы ресурсов</Filter>
     </Text>
-    <Text Include="in3.txt">
+    <Text Include="out.txt">
       <Filter>Файлы ресурсов</Filter>
     </Text>
   </ItemGroup>

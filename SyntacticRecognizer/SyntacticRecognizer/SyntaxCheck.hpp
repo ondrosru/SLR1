@@ -98,11 +98,10 @@ public:
 	
 
 private:
-	const std::string NO_VALUE = "|-|";
-	const std::string CONVOLUTION_STR = "|R|";
-	const std::string OK_STRING = "|ok|";
-	const std::string END_SYMBOL = "[end]";
-	const char DELIM = '~';
+	const std::string NO_VALUE = "-";
+	const std::string CONVOLUTION_STR = "R";
+	const std::string OK_STRING = "ok";
+	const std::string END_SYMBOL = "#";
 	Lexer m_lexer;
 	std::stack<std::string> m_stack;
 	std::string m_currRow;
@@ -127,11 +126,12 @@ private:
 		std::ifstream file( fileName );
 		std::string colsStr;
 		std::getline( file, colsStr );
-		std::stringstream colsSteram( colsStr );
+		std::stringstream colsStream( colsStr );
 		std::vector<std::string> cols;
-		while ( colsSteram.rdbuf()->in_avail() != 0 ) {
-			std::string col;
-			colsSteram >> col;
+		std::string col;
+		colsStream >> col;
+		while ( colsStream.rdbuf()->in_avail() != 0 ) {
+			colsStream >> col;
 			if ( col != "" ) {
 				if ( m_firstCol == "" ) {
 					m_firstCol = col;
@@ -154,12 +154,13 @@ private:
 				std::string value;
 				lineStream >> value;
 				if ( value != NO_VALUE ) {
-					if ( value.size() > CONVOLUTION_STR.size() && value.substr( 0, CONVOLUTION_STR.size() ) == CONVOLUTION_STR ) {
+					if ( value.size() > CONVOLUTION_STR.size() && value.substr( 0, CONVOLUTION_STR.size() + 1 ) == CONVOLUTION_STR + "<" ) {
 						std::string nextState = value.substr( CONVOLUTION_STR.size() );
 						std::stringstream streamValue( nextState );
 						std::string nextSymbol = "";
 						std::string count;
-						std::getline( streamValue, nextSymbol, DELIM );
+						std::getline( streamValue, nextSymbol, '>' );
+						nextSymbol += '>';
 						std::getline( streamValue, count );
 						SyntaxTableState valueTable = { nextSymbol, TypeTransition::Ñonvolution, std::atoi(count.c_str()) };
 						m_table[rowNum][cols[i]] = valueTable;
@@ -171,7 +172,6 @@ private:
 				}
 			}
 		}
-		std::string str = "endl";
 	};
 
 	bool isNonterm( std::string str ) {
@@ -266,7 +266,7 @@ private:
 			str = "[semicolon]";
 			break;
 		case TokenType::End:
-			str = "[end]";
+			str = "#";
 			break;
 		case TokenType::EndLine:
 			str = "[endline]";

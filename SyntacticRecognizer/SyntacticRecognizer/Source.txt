@@ -1,3 +1,3 @@
-num + -id * (-num+ -id)
+num + -id * (-num+id+ -id)+20 + 5 + -54
 
 

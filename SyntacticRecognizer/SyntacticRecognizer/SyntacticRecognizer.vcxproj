@@ -161,6 +161,9 @@
     <Text Include="Table1.txt" />
     <Text Include="Table2.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="LexerMachine.csv" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
